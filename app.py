@@ -19,6 +19,8 @@ st.set_page_config(
 # ==========================
 SCRIPT_DIR = Path(__file__).resolve().parent
 MODEL_DIR = SCRIPT_DIR / "model"
+if not MODEL_DIR.exists():
+    MODEL_DIR = SCRIPT_DIR / "main" / "model"
 
 @st.cache_resource
 def load_models():
