@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from PIL import Image
 from tensorflow.keras.models import load_model
 
@@ -16,15 +17,25 @@ st.set_page_config(
 # ==========================
 # LOAD MODEL
 # ==========================
+SCRIPT_DIR = Path(__file__).resolve().parent
+MODEL_DIR = SCRIPT_DIR / "model"
+
 @st.cache_resource
 def load_models():
-    mobilenet = load_model(
-        "model/mobilenetv2_cat_skin_disease.h5"
-    )
+    mobilenet_path = MODEL_DIR / "mobilenetv2_cat_skin_disease.h5"
+    efficientnet_path = MODEL_DIR / "efficientnetb1_cat_skin_disease_final.keras"
 
-    efficientnet = load_model(
-        "model/efficientnetb1_cat_skin_disease_final.keras"
-    )
+    if not mobilenet_path.exists() or not efficientnet_path.exists():
+        missing = [
+            str(p) for p in (mobilenet_path, efficientnet_path) if not p.exists()
+        ]
+        raise FileNotFoundError(
+            f"Model file(s) not found: {', '.join(missing)}. "
+            f"Letakkan model di folder {MODEL_DIR}."
+        )
+
+    mobilenet = load_model(mobilenet_path)
+    efficientnet = load_model(efficientnet_path)
 
     return mobilenet, efficientnet
 
