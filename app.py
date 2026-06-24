@@ -11,6 +11,7 @@ try:
     from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
 except Exception:
     try:
+        import keras
         from keras.models import load_model
         from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
         from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
