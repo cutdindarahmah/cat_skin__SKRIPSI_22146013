@@ -52,10 +52,17 @@ def load_models():
     except Exception:
         return None, None
 
-mobilenet_model, efficientnet_model = load_models()
+mobilenet_model, efficientnet_model = None, None
+
+if st.session_state.get("models_loaded") is None:
+    st.session_state.models_loaded = False
+
+if not st.session_state.models_loaded:
+    mobilenet_model, efficientnet_model = load_models()
+    st.session_state.models_loaded = True
 
 if mobilenet_model is None or efficientnet_model is None:
-    st.warning("Model tidak dapat dimuat di environment ini. Aplikasi tetap berjalan, tetapi prediksi tidak tersedia sampai dependency TensorFlow compatible terpasang.")
+    st.info("Model sedang dipersiapkan. Jika prediksi belum tersedia, aplikasi mungkin sedang menjalankan fallback karena TensorFlow belum tersedia di environment ini.")
 
 # ==========================
 # CLASS NAMES
