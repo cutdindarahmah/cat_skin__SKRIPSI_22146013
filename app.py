@@ -1,6 +1,5 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from PIL import Image
 
@@ -245,23 +244,25 @@ if uploaded_file is not None:
             for i in range(len(prob))
         ]
 
-    df = pd.DataFrame(
+    prob_rows = [
         {
-            "Penyakit": labels,
-            "Probabilitas (%)": prob
+            "Penyakit": labels[i],
+            "Probabilitas (%)": float(prob[i])
         }
-    )
+        for i in range(len(labels))
+    ]
 
     st.dataframe(
-        df,
+        prob_rows,
         use_container_width=True
     )
 
-    st.bar_chart(
-        df.set_index(
-            "Penyakit"
-        )
-    )
+    chart_data = {
+        row["Penyakit"]: row["Probabilitas (%)"]
+        for row in prob_rows
+    }
+
+    st.bar_chart(chart_data)
 
     # ==========================
     # TOP 3 PREDIKSI
@@ -303,11 +304,7 @@ if uploaded_file is not None:
         "Riwayat Prediksi"
     )
 
-    history_df = pd.DataFrame(
-        st.session_state.history
-    )
-
     st.dataframe(
-        history_df,
+        st.session_state.history,
         use_container_width=True
     )
