@@ -134,14 +134,14 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    image = Image.open(uploaded_file).convert("RGB")
+    uploaded_bytes = uploaded_file.getvalue()
 
     col1, col2 = st.columns([1,1])
 
     with col1:
 
         st.image(
-            image,
+            uploaded_bytes,
             caption="Gambar yang Diunggah",
             use_container_width=True
         )
