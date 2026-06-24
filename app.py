@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 from pathlib import Path
-from PIL import Image
 
 try:
     from tensorflow.keras.models import load_model
