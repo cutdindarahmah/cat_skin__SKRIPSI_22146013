@@ -1,6 +1,8 @@
-import streamlit as st
-import numpy as np
+import io
 from pathlib import Path
+
+import numpy as np
+import streamlit as st
 
 try:
     from tensorflow.keras.models import load_model
@@ -15,6 +17,11 @@ except Exception:
         load_model = None
         mobilenet_preprocess_input = None
         efficientnet_preprocess_input = None
+
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 # ==========================
 # CONFIG
@@ -32,6 +39,35 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 MODEL_DIR = SCRIPT_DIR / "model"
 if not MODEL_DIR.exists():
     MODEL_DIR = SCRIPT_DIR / "main" / "model"
+
+def get_model_input_size(model):
+    if model is None:
+        return 224
+
+    input_shape = getattr(model, "input_shape", None)
+    if isinstance(input_shape, list):
+        input_shape = input_shape[0] if input_shape else None
+
+    if input_shape is None:
+        try:
+            input_shape = model.input.shape
+        except Exception:
+            input_shape = None
+
+    if input_shape is None and hasattr(model, "layers"):
+        for layer in model.layers:
+            layer_shape = getattr(layer, "input_shape", None)
+            if isinstance(layer_shape, (list, tuple)) and len(layer_shape) >= 3:
+                input_shape = layer_shape
+                break
+
+    if isinstance(input_shape, (list, tuple)) and len(input_shape) >= 3:
+        for dim in input_shape[1:3]:
+            if isinstance(dim, int) and dim > 0:
+                return dim
+
+    return 224
+
 
 def load_models():
     if load_model is None:
@@ -158,24 +194,29 @@ if uploaded_file is not None:
         model = efficientnet_model
         preprocess_func = efficientnet_preprocess_input
 
-    input_shape = model.input_shape
-    if isinstance(input_shape, list):
-        input_shape = input_shape[0]
-
-    target_size = 224
-    if len(input_shape) >= 3:
-        for dim in input_shape[1:3]:
-            if isinstance(dim, int) and dim > 0:
-                target_size = dim
-                break
+    target_size = get_model_input_size(model)
 
     # ==========================
     # PREPROCESSING
     # ==========================
-    img = image.resize((target_size, target_size))
+    try:
+        if Image is not None:
+            image = Image.open(io.BytesIO(uploaded_bytes)).convert("RGB")
+            img = image.resize((target_size, target_size))
+            img_array = np.array(img, dtype="float32")
+        else:
+            raise RuntimeError("Pillow tidak tersedia")
+    except Exception as exc:
+        st.error(f"Gagal memproses gambar: {exc}")
+        st.stop()
 
-    img_array = np.array(img, dtype="float32")
-    img_array = preprocess_func(img_array)
+    if preprocess_func is not None:
+        try:
+            img_array = preprocess_func(img_array)
+        except Exception:
+            img_array = img_array / 255.0
+    else:
+        img_array = img_array / 255.0
 
     img_array = np.expand_dims(
         img_array,
