@@ -69,22 +69,32 @@ def get_model_input_size(model):
     return 224
 
 
-def load_models():
+def load_model_file(model_path):
     if load_model is None:
-        return None, None
+        return None
 
+    if not model_path.exists():
+        return None
+
+    try:
+        return load_model(model_path, compile=False)
+    except Exception:
+        try:
+            return load_model(model_path)
+        except Exception:
+            return None
+
+
+def load_models():
     mobilenet_path = MODEL_DIR / "mobilenetv2_cat_skin_disease.h5"
     efficientnet_path = MODEL_DIR / "efficientnetb1_cat_skin_disease_final.keras"
 
     if not mobilenet_path.exists() or not efficientnet_path.exists():
         return None, None
 
-    try:
-        mobilenet = load_model(mobilenet_path)
-        efficientnet = load_model(efficientnet_path)
-        return mobilenet, efficientnet
-    except Exception:
-        return None, None
+    mobilenet = load_model_file(mobilenet_path)
+    efficientnet = load_model_file(efficientnet_path)
+    return mobilenet, efficientnet
 
 mobilenet_model, efficientnet_model = None, None
 
@@ -194,6 +204,10 @@ if uploaded_file is not None:
         model = efficientnet_model
         preprocess_func = efficientnet_preprocess_input
 
+    if model is None or not hasattr(model, "predict"):
+        st.error("Model tidak berhasil dimuat. Silakan coba lagi nanti.")
+        st.stop()
+
     target_size = get_model_input_size(model)
 
     # ==========================
@@ -226,7 +240,11 @@ if uploaded_file is not None:
     # ==========================
     # PREDIKSI
     # ==========================
-    prediction = model.predict(img_array)
+    try:
+        prediction = model.predict(img_array, verbose=0)
+    except Exception as exc:
+        st.error(f"Prediksi gagal dijalankan: {exc}")
+        st.stop()
 
     predicted_class = np.argmax(
         prediction
