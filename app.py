@@ -133,7 +133,7 @@ if not st.session_state.models_loaded:
     st.session_state.models_loaded = True
 
 if mobilenet_model is None or efficientnet_model is None:
-    st.info("Model belum dapat dimuat. Pastikan dependensi TensorFlow terinstal dengan benar di environment deployment.")
+    st.caption("Mode demo aktif: model TensorFlow tidak tersedia di environment deployment.")
 
 # ==========================
 # CLASS NAMES
@@ -275,7 +275,7 @@ if uploaded_file is not None:
             prediction = predict_with_fallback(img_array)
 
     if used_fallback:
-        st.info("Model TensorFlow tidak tersedia di environment deployment. Prediksi saat ini menggunakan mode fallback heuristik.")
+        st.caption("Prediksi menggunakan mode fallback heuristik karena TensorFlow tidak tersedia di environment deployment.")
 
     predicted_class = np.argmax(
         prediction
