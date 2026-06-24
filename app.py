@@ -39,26 +39,25 @@ if not MODEL_DIR.exists():
 
 def load_models():
     if load_model is None:
-        raise RuntimeError("TensorFlow/Keras tidak tersedia. Pastikan dependency terinstall dengan benar.")
+        return None, None
 
     mobilenet_path = MODEL_DIR / "mobilenetv2_cat_skin_disease.h5"
     efficientnet_path = MODEL_DIR / "efficientnetb1_cat_skin_disease_final.keras"
 
     if not mobilenet_path.exists() or not efficientnet_path.exists():
-        missing = [
-            str(p) for p in (mobilenet_path, efficientnet_path) if not p.exists()
-        ]
-        raise FileNotFoundError(
-            f"Model file(s) not found: {', '.join(missing)}. "
-            f"Letakkan model di folder {MODEL_DIR}."
-        )
+        return None, None
 
-    mobilenet = load_model(mobilenet_path)
-    efficientnet = load_model(efficientnet_path)
-
-    return mobilenet, efficientnet
+    try:
+        mobilenet = load_model(mobilenet_path)
+        efficientnet = load_model(efficientnet_path)
+        return mobilenet, efficientnet
+    except Exception:
+        return None, None
 
 mobilenet_model, efficientnet_model = load_models()
+
+if mobilenet_model is None or efficientnet_model is None:
+    st.warning("Model tidak dapat dimuat di environment ini. Aplikasi tetap berjalan, tetapi prediksi tidak tersedia sampai dependency TensorFlow compatible terpasang.")
 
 # ==========================
 # CLASS NAMES
