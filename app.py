@@ -346,12 +346,10 @@ if uploaded_file is not None:
         use_container_width=True
     )
 
-    chart_data = {
-        row["Penyakit"]: row["Probabilitas (%)"]
-        for row in prob_rows
-    }
-
-    st.bar_chart(chart_data)
+    st.write("")
+    st.caption("Distribusi probabilitas kelas")
+    for row in prob_rows:
+        st.progress(float(row["Probabilitas (%)"]) / 100.0, text=f"{row['Penyakit']}: {row['Probabilitas (%)']:.2f}%")
 
     # ==========================
     # TOP 3 PREDIKSI
