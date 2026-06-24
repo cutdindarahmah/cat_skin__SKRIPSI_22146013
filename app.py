@@ -81,17 +81,23 @@ def predict_with_fallback(img_array):
     contrast = float(np.std(gray))
     redness = float(np.mean(image[..., 0] - image[..., 1]))
     saturation = float(np.mean(np.std(image, axis=-1)))
+    blueness = float(np.mean(image[..., 2] - image[..., 0]))
+    darkness = float(np.mean(gray < 120))
 
-    probs = np.array([0.25, 0.25, 0.25, 0.25], dtype="float32")
+    probs = np.array([0.30, 0.25, 0.25, 0.20], dtype="float32")
 
     if brightness < 90 and redness > 15:
-        probs = np.array([0.45, 0.25, 0.1, 0.2], dtype="float32")
+        probs = np.array([0.55, 0.20, 0.10, 0.15], dtype="float32")
     elif contrast > 40 and saturation > 35:
-        probs = np.array([0.2, 0.15, 0.15, 0.5], dtype="float32")
+        probs = np.array([0.20, 0.15, 0.15, 0.50], dtype="float32")
     elif brightness > 140 and saturation < 25:
-        probs = np.array([0.1, 0.1, 0.7, 0.1], dtype="float32")
+        probs = np.array([0.10, 0.15, 0.65, 0.10], dtype="float32")
+    elif darkness > 0.45 and blueness > 8:
+        probs = np.array([0.35, 0.40, 0.10, 0.15], dtype="float32")
+    elif redness < -5 and saturation > 25:
+        probs = np.array([0.25, 0.20, 0.20, 0.35], dtype="float32")
     else:
-        probs = np.array([0.3, 0.3, 0.2, 0.2], dtype="float32")
+        probs = np.array([0.30, 0.28, 0.22, 0.20], dtype="float32")
 
     return probs.reshape(1, -1)
 
