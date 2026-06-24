@@ -106,7 +106,7 @@ if not st.session_state.models_loaded:
     st.session_state.models_loaded = True
 
 if mobilenet_model is None or efficientnet_model is None:
-    st.info("Model sedang dipersiapkan. Jika prediksi belum tersedia, aplikasi mungkin sedang menjalankan fallback karena TensorFlow belum tersedia di environment ini.")
+    st.info("Model belum dapat dimuat. Pastikan dependensi TensorFlow terinstal dengan benar di environment deployment.")
 
 # ==========================
 # CLASS NAMES
