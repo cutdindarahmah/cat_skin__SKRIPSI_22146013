@@ -5,13 +5,11 @@ from pathlib import Path
 from PIL import Image
 
 try:
-    import tensorflow as tf
     from tensorflow.keras.models import load_model
     from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
     from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
 except Exception:
     try:
-        import keras
         from keras.models import load_model
         from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
         from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
