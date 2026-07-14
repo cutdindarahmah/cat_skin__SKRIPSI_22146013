@@ -8,5 +8,4 @@ dependencies:
   - pillow=10.4.0
   - pip:
       - streamlit==1.46.1
-      - tensorflow-cpu==2.15.0
-      - keras==2.15.0
+      - tensorflow-cpu==2.20.0
