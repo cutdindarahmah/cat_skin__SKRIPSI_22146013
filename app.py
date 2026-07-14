@@ -9,17 +9,19 @@ try:
     from tensorflow.keras.models import load_model
     from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
     from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-except Exception:
+except Exception as exc:
     try:
         import keras as tf
         from keras.models import load_model
         from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
         from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-    except Exception:
+    except Exception as exc2:
         tf = None
         load_model = None
         mobilenet_preprocess_input = None
         efficientnet_preprocess_input = None
+        import sys
+        print("TensorFlow import failed", exc, exc2, file=sys.stderr)
 
 try:
     from PIL import Image
