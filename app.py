@@ -41,9 +41,30 @@ st.set_page_config(
 # LOAD MODEL
 # ==========================
 SCRIPT_DIR = Path(__file__).resolve().parent
-MODEL_DIR = SCRIPT_DIR / "model"
-if not MODEL_DIR.exists():
-    MODEL_DIR = SCRIPT_DIR / "main" / "model"
+
+
+def resolve_model_dir():
+    candidates = [
+        SCRIPT_DIR / "model",
+        SCRIPT_DIR.parent / "model",
+        SCRIPT_DIR / "main" / "model",
+        SCRIPT_DIR.parent / "main" / "model",
+        Path.cwd() / "model",
+    ]
+
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+
+        mobilenet_path = candidate / "mobilenetv2_cat_skin_disease.h5"
+        efficientnet_path = candidate / "efficientnetb1_cat_skin_disease_final.keras"
+        if mobilenet_path.exists() and efficientnet_path.exists():
+            return candidate
+
+    return SCRIPT_DIR / "model"
+
+
+MODEL_DIR = resolve_model_dir()
 
 def get_model_input_size(model):
     if model is None:
