@@ -44,22 +44,40 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def resolve_model_dir():
-    candidates = [
-        SCRIPT_DIR / "model",
-        SCRIPT_DIR.parent / "model",
-        SCRIPT_DIR / "main" / "model",
-        SCRIPT_DIR.parent / "main" / "model",
-        Path.cwd() / "model",
-    ]
-
-    for candidate in candidates:
-        if not candidate.exists():
+    roots = []
+    for base in [SCRIPT_DIR, SCRIPT_DIR.parent, Path.cwd()]:
+        if base is None:
             continue
+        roots.append(base)
+        try:
+            roots.append(base.parent)
+        except Exception:
+            pass
 
-        mobilenet_path = candidate / "mobilenetv2_cat_skin_disease.h5"
-        efficientnet_path = candidate / "efficientnetb1_cat_skin_disease_final.keras"
-        if mobilenet_path.exists() and efficientnet_path.exists():
-            return candidate
+    seen = set()
+    for base in roots:
+        for candidate in [base / "model", base / "main" / "model", base / "app" / "model"]:
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if not candidate.exists():
+                continue
+
+            mobilenet_path = candidate / "mobilenetv2_cat_skin_disease.h5"
+            efficientnet_path = candidate / "efficientnetb1_cat_skin_disease_final.keras"
+            if mobilenet_path.exists() and efficientnet_path.exists():
+                return candidate
+
+    for base in roots:
+        try:
+            for model_file in base.rglob("mobilenetv2_cat_skin_disease.h5"):
+                if not model_file.is_file():
+                    continue
+                model_dir = model_file.parent
+                if (model_dir / "efficientnetb1_cat_skin_disease_final.keras").exists():
+                    return model_dir
+        except Exception:
+            continue
 
     return SCRIPT_DIR / "model"
 
