@@ -5,15 +5,18 @@ import numpy as np
 import streamlit as st
 
 try:
+    import tensorflow as tf
     from tensorflow.keras.models import load_model
     from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
     from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
 except Exception:
     try:
+        import keras as tf
         from keras.models import load_model
         from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
         from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
     except Exception:
+        tf = None
         load_model = None
         mobilenet_preprocess_input = None
         efficientnet_preprocess_input = None
@@ -104,18 +107,18 @@ def predict_with_fallback(img_array):
 
 def load_model_file(model_path):
     if load_model is None:
-        return None
+        return None, "TensorFlow/Keras tidak tersedia."
 
     if not model_path.exists():
-        return None
+        return None, f"File model tidak ditemukan: {model_path}"
 
     try:
-        return load_model(model_path, compile=False)
-    except Exception:
+        return load_model(model_path, compile=False), None
+    except Exception as exc:
         try:
-            return load_model(model_path)
-        except Exception:
-            return None
+            return load_model(model_path), None
+        except Exception as exc2:
+            return None, f"{type(exc2).__name__}: {exc2}"
 
 
 def load_models():
@@ -123,51 +126,49 @@ def load_models():
     efficientnet_path = MODEL_DIR / "efficientnetb1_cat_skin_disease_final.keras"
 
     if not mobilenet_path.exists() or not efficientnet_path.exists():
-        return None, None
+        return None, None, "Satu atau lebih file model tidak ditemukan."
 
-    mobilenet = load_model_file(mobilenet_path)
-    efficientnet = load_model_file(efficientnet_path)
-    return mobilenet, efficientnet
+    mobilenet, mobilenet_error = load_model_file(mobilenet_path)
+    efficientnet, efficientnet_error = load_model_file(efficientnet_path)
+
+    errors = []
+    if mobilenet_error:
+        errors.append(f"MobileNetV2: {mobilenet_error}")
+    if efficientnet_error:
+        errors.append(f"EfficientNetB1: {efficientnet_error}")
+
+    return mobilenet, efficientnet, "; ".join(errors) if errors else None
 
 mobilenet_model, efficientnet_model = None, None
+model_load_message = ""
 
-if st.session_state.get("models_loaded") is None:
-    st.session_state.models_loaded = False
-
-if not st.session_state.models_loaded:
-    mobilenet_model, efficientnet_model = load_models()
-    st.session_state.models_loaded = True
+mobilenet_model, efficientnet_model, model_load_message = load_models()
 
 if mobilenet_model is None or efficientnet_model is None:
-    st.caption("Mode demo aktif: model TensorFlow tidak tersedia di environment deployment.")
+    st.caption("Model TensorFlow tidak bisa dimuat. Pastikan dependency TensorFlow terinstal dan file model ada.")
+    if model_load_message:
+        st.caption(model_load_message)
 
 # ==========================
 # CLASS NAMES
 # SESUAIKAN URUTAN INI DENGAN URUTAN OUTPUT MODEL SAAT TRAINING
 # ==========================
 DEFAULT_CLASS_NAMES = [
-    "Scabies",
     "Flea_Allergy",
-    "Health",
-    "Ringworm"
+    "Healthy",
+    "Ringworm",
+    "Scabies"
 ]
 
 st.sidebar.markdown("---")
-class_names_input = st.sidebar.text_input(
-    "Urutan label kelas model",
-    ",".join(DEFAULT_CLASS_NAMES),
-    help="Pisahkan dengan koma sesuai urutan output model. Contoh: Scabies,Flea_Allergy,Health,Ringworm"
-)
 
-class_names = [
-    name.strip() for name in class_names_input.split(",") if name.strip()
-]
+if "class_names" not in st.session_state:
+    st.session_state.class_names = DEFAULT_CLASS_NAMES.copy()
 
+class_names = st.session_state.class_names.copy()
 if len(class_names) != 4:
-    st.sidebar.warning(
-        "Harap isi 4 label yang dipisahkan koma agar sesuai dengan output model."
-    )
     class_names = DEFAULT_CLASS_NAMES
+    st.session_state.class_names = class_names
 
 # ==========================
 # SIDEBAR
@@ -237,6 +238,13 @@ if uploaded_file is not None:
         model = efficientnet_model
         preprocess_func = efficientnet_preprocess_input
 
+    if model is None:
+        st.error(
+            f"Model {selected_model} tidak bisa dimuat. "
+            f"{model_load_message or 'Periksa file model dan dependency TensorFlow.'}"
+        )
+        st.stop()
+
     target_size = get_model_input_size(model)
 
     # ==========================
@@ -261,10 +269,8 @@ if uploaded_file is not None:
     else:
         img_array = img_array / 255.0
 
-    img_array = np.expand_dims(
-        img_array,
-        axis=0
-    )
+    img_array = img_array.astype("float32")
+    img_array = np.expand_dims(img_array, axis=0)
 
     # ==========================
     # PREDIKSI
@@ -281,19 +287,16 @@ if uploaded_file is not None:
             prediction = predict_with_fallback(img_array)
 
     if used_fallback:
-        st.caption("Prediksi menggunakan mode fallback heuristik karena TensorFlow tidak tersedia di environment deployment.")
+        st.caption("Prediksi menggunakan mode fallback heuristik karena model tidak bisa diproses.")
 
-    predicted_class = np.argmax(
-        prediction
-    )
+    prediction = np.asarray(prediction).reshape(-1)
+    probs = np.clip(prediction, 1e-8, 1.0)
+    probs = probs / probs.sum()
 
-    confidence = np.max(
-        prediction
-    ) * 100
-
-    disease = class_names[
-        predicted_class
-    ]
+    predicted_class = int(np.argmax(probs))
+    confidence = float(np.max(probs) * 100)
+    disease = class_names[predicted_class]
+    confidence_text = f"{confidence:.2f}%"
 
     # ==========================
     # HASIL
@@ -308,7 +311,7 @@ if uploaded_file is not None:
 
         st.metric(
             "Confidence",
-            f"{confidence:.2f}%"
+            confidence_text
         )
 
         st.write(
@@ -324,7 +327,7 @@ if uploaded_file is not None:
         "Probabilitas Semua Kelas"
     )
 
-    prob = np.asarray(prediction).squeeze() * 100
+    prob = np.asarray(probs).squeeze() * 100
     if prob.ndim != 1:
         prob = prob.flatten()
 
