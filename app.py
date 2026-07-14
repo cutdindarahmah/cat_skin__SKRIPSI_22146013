@@ -5,25 +5,6 @@ import numpy as np
 import streamlit as st
 
 try:
-    import tensorflow as tf
-    from tensorflow.keras.models import load_model
-    from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
-    from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-except Exception as exc:
-    try:
-        import keras as tf
-        from keras.models import load_model
-        from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
-        from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-    except Exception as exc2:
-        tf = None
-        load_model = None
-        mobilenet_preprocess_input = None
-        efficientnet_preprocess_input = None
-        import sys
-        print("TensorFlow import failed", exc, exc2, file=sys.stderr)
-
-try:
     from PIL import Image
 except Exception:
     Image = None
@@ -41,6 +22,50 @@ st.set_page_config(
 # LOAD MODEL
 # ==========================
 SCRIPT_DIR = Path(__file__).resolve().parent
+
+# TensorFlow/Keras is loaded lazily so Streamlit can start even in deployment
+# environments where the native backend is unstable.
+tf_backend = None
+load_model_fn = None
+mobilenet_preprocess_input = None
+efficientnet_preprocess_input = None
+backend_error_message = ""
+
+
+def get_tensorflow_backend():
+    global tf_backend, load_model_fn, mobilenet_preprocess_input, efficientnet_preprocess_input, backend_error_message
+
+    if tf_backend is not None:
+        return True
+
+    try:
+        import tensorflow as tf
+        from tensorflow.keras.models import load_model as tf_load_model
+        from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as tf_mobilenet_preprocess
+        from tensorflow.keras.applications.efficientnet import preprocess_input as tf_efficientnet_preprocess
+
+        tf_backend = tf
+        load_model_fn = tf_load_model
+        mobilenet_preprocess_input = tf_mobilenet_preprocess
+        efficientnet_preprocess_input = tf_efficientnet_preprocess
+        backend_error_message = ""
+        return True
+    except Exception as exc:
+        try:
+            import keras as tf
+            from keras.models import load_model as tf_load_model
+            from keras.applications.mobilenet_v2 import preprocess_input as tf_mobilenet_preprocess
+            from keras.applications.efficientnet import preprocess_input as tf_efficientnet_preprocess
+
+            tf_backend = tf
+            load_model_fn = tf_load_model
+            mobilenet_preprocess_input = tf_mobilenet_preprocess
+            efficientnet_preprocess_input = tf_efficientnet_preprocess
+            backend_error_message = ""
+            return True
+        except Exception as exc2:
+            backend_error_message = f"TensorFlow/Keras tidak tersedia: {exc2}"
+            return False
 
 
 def resolve_model_dir():
@@ -147,17 +172,20 @@ def predict_with_fallback(img_array):
 
 
 def load_model_file(model_path):
-    if load_model is None:
+    if not get_tensorflow_backend():
+        return None, backend_error_message or "TensorFlow/Keras tidak tersedia."
+
+    if load_model_fn is None:
         return None, "TensorFlow/Keras tidak tersedia."
 
     if not model_path.exists():
         return None, f"File model tidak ditemukan: {model_path}"
 
     try:
-        return load_model(model_path, compile=False), None
-    except Exception as exc:
+        return load_model_fn(model_path, compile=False), None
+    except Exception:
         try:
-            return load_model(model_path), None
+            return load_model_fn(model_path), None
         except Exception as exc2:
             return None, f"{type(exc2).__name__}: {exc2}"
 
@@ -182,15 +210,6 @@ def load_models():
 
 mobilenet_model, efficientnet_model = None, None
 model_load_message = ""
-
-mobilenet_model, efficientnet_model, model_load_message = load_models()
-
-if mobilenet_model is None or efficientnet_model is None:
-    st.warning(
-        "TensorFlow model belum bisa dimuat di environment ini. Aplikasi akan memakai mode fallback heuristik untuk prediksi."
-    )
-    if model_load_message:
-        st.caption(model_load_message)
 
 # ==========================
 # CLASS NAMES
@@ -256,6 +275,21 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
+    if "models_loaded" not in st.session_state:
+        mobilenet_model, efficientnet_model, model_load_message = load_models()
+        st.session_state.models_loaded = True
+        st.session_state.mobilenet_model = mobilenet_model
+        st.session_state.efficientnet_model = efficientnet_model
+        st.session_state.model_load_message = model_load_message
+    else:
+        mobilenet_model = st.session_state.get("mobilenet_model", mobilenet_model)
+        efficientnet_model = st.session_state.get("efficientnet_model", efficientnet_model)
+        model_load_message = st.session_state.get("model_load_message", model_load_message)
+
+    if mobilenet_model is None or efficientnet_model is None:
+        st.info("TensorFlow backend tidak tersedia di deployment ini. Prediksi akan memakai mode fallback heuristik.")
+        if model_load_message:
+            st.caption(model_load_message)
 
     uploaded_bytes = uploaded_file.getvalue()
 
