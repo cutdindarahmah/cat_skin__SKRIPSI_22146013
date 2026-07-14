@@ -2,11 +2,12 @@ name: cat-skin
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.10
   - pip
   - numpy=1.26.4
   - pillow=10.4.0
-  - tensorflow-cpu=2.16.2
-  - keras=2.16.2
+  - protobuf=4.25.3
+  - tensorflow-cpu=2.15.0
+  - keras=2.15.0
   - pip:
       - streamlit==1.46.1

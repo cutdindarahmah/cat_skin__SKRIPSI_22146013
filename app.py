@@ -147,7 +147,9 @@ model_load_message = ""
 mobilenet_model, efficientnet_model, model_load_message = load_models()
 
 if mobilenet_model is None or efficientnet_model is None:
-    st.caption("Model TensorFlow tidak bisa dimuat. Pastikan dependency TensorFlow terinstal dan file model ada.")
+    st.warning(
+        "TensorFlow model belum bisa dimuat di environment ini. Aplikasi akan memakai mode fallback heuristik untuk prediksi."
+    )
     if model_load_message:
         st.caption(model_load_message)
 
@@ -241,11 +243,9 @@ if uploaded_file is not None:
         preprocess_func = efficientnet_preprocess_input
 
     if model is None:
-        st.error(
-            f"Model {selected_model} tidak bisa dimuat. "
-            f"{model_load_message or 'Periksa file model dan dependency TensorFlow.'}"
+        st.warning(
+            f"Model {selected_model} tidak tersedia, sehingga prediksi dilakukan dengan mode fallback heuristik."
         )
-        st.stop()
 
     target_size = get_model_input_size(model)
 
