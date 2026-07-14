@@ -1,0 +1,11 @@
+name: cat-skin
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy=1.26.4
+  - pillow=10.4.0
+  - tensorflow-cpu=2.16.2
+  - pip:
+      - streamlit==1.46.1
